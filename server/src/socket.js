@@ -5,9 +5,21 @@ const User = require('./models/User');
 let io;
 
 const initSocket = (server) => {
+  const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+    .split(',')
+    .map(url => url.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
   io = socketIo(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const normalizedOrigin = origin.trim().replace(/\/+$/, '');
+        if (allowedOrigins.includes(normalizedOrigin)) {
+          return callback(null, normalizedOrigin);
+        }
+        return callback(null, false);
+      },
       credentials: true,
       methods: ['GET', 'POST']
     }
