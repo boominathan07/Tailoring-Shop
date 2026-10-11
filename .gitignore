@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Production & Build Outputs
+dist/
+dist-ssr/
+build/
+coverage/
+.nyc_output/
+
+# Environment Variables & Secrets
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Runtime Uploads, Caches & Logs
+uploads/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Agent & Automation Tool Outputs
+.playwright-mcp/
+graphify-out/
+
+# Operating System Metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor & IDE Settings
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.bak
