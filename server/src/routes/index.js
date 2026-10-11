@@ -19,6 +19,7 @@ router.use('/auth', authRoutes);
 router.use('/designs', designRoutes);
 router.use('/services', serviceRoutes);
 router.use('/works', workRoutes);
+router.use('/work', workRoutes);
 router.use('/enquiries', enquiryRoutes);
 router.use('/custom-requests', customRequestRoutes);
 router.use('/notifications', notificationRoutes);

@@ -32,14 +32,21 @@ const AdminLayout = () => {
           setUnreadCount(countData.count);
         }
 
-        socket = io(import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000', {
-          withCredentials: true
-        });
+        const socketUrl = import.meta.env.VITE_SOCKET_URL 
+          || (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.startsWith('/')
+              ? import.meta.env.VITE_API_URL.replace('/api', '')
+              : (import.meta.env.DEV ? 'http://localhost:5000' : null));
 
-        socket.on('new_notification', (notification) => {
-          setNotifications(prev => [notification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-        });
+        if (socketUrl) {
+          socket = io(socketUrl, {
+            withCredentials: true
+          });
+
+          socket.on('new_notification', (notification) => {
+            setNotifications(prev => [notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+          });
+        }
 
       } catch (error) {
         console.error('Failed to initialize notifications:', error);

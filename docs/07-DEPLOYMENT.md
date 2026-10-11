@@ -21,21 +21,45 @@ The following environment variables MUST be provided to the production backend. 
 * `CLOUDINARY_API_SECRET`: Cloudinary API Secret.
 * `CLIENT_URL`: The exact root URL of the deployed frontend (used to configure CORS).
 
-The frontend requires the following variable at build time:
-* `VITE_API_URL`: The exact root URL of the deployed backend API (e.g., `https://api.guru-tailoring.com/api`).
+The frontend uses the following variables at build time:
+* `VITE_API_URL`: Path to the API. When using the Vercel API proxy (default), set to `/api` or leave unset (Vite defaults to `/api` in production). If using a direct backend subdomain on a shared custom domain, provide `https://api.guru-tailoring.com/api`.
+* `VITE_SOCKET_URL` (optional): URL of the Socket.IO server. In production, if unset, Socket.IO polling on Vercel is disabled to prevent proxy errors, while administrative notifications continue to load reliably via the REST API (`/api/notifications`).
 
 ## 3. MongoDB Configuration
 * **Production**: The server mandates the presence of `MONGO_URI` via a startup validation check. The backend will fatally crash if it is missing, intentionally preventing any silent fallback.
 * **Local Development**: If running locally (`NODE_ENV !== 'production'`), the server safely falls back to `mongodb://127.0.0.1:27017/guru-tailoring` if `MONGO_URI` is omitted, preserving the existing development workflow.
 
 ## 4. Domains, CORS, and Cookies
-* **Domain Arrangement**: The backend is configured to issue JWT auth cookies with `SameSite: 'strict'` and `Secure: true`. 
-  * **Requirement**: Because of the `strict` policy, the frontend and backend **MUST** be hosted on the exact same root domain (e.g., `www.guru-tailoring.com` and `api.guru-tailoring.com`). If you host them on entirely different domains (e.g., `guru.vercel.app` and `guru.onrender.com`), the browser will drop the auth cookies and login will fail.
-* **CORS**: The backend restricts cross-origin requests to the origin defined in `CLIENT_URL`.
-* **HTTPS**: Production mandates HTTPS. The `Secure: true` flag ensures cookies are only transmitted over encrypted connections.
+* **Authentication & Cookie Architecture**: The backend issues JWT authentication cookies with:
+  * `httpOnly: true` (inaccessible to browser JavaScript, mitigating XSS risks)
+  * `secure: process.env.NODE_ENV === 'production'` (only transmitted over HTTPS)
+  * `sameSite: 'strict'` (cookies are never sent in cross-site contexts, mitigating CSRF)
+  * `path: '/'`
+* **Vercel API Proxy**: Because the frontend (`https://tailoring-shop-sooty.vercel.app`) and backend (`https://tailoring-shop-6d03.onrender.com`) are on different public domains, cross-site requests drop `SameSite=Strict` cookies. To resolve this without weakening cookie security, Vercel is configured in `client/vercel.json` to proxy `/api/*` requests to the Render backend:
+  ```json
+  {
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://tailoring-shop-6d03.onrender.com/api/:path*"
+      },
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  }
+  ```
+  With this rewrite:
+  - From the browser's perspective, all API requests are same-origin (`/api/...`).
+  - The browser retains and sends the `jwt` cookie with `SameSite=Strict`.
+  - Vercel forwards the headers to Render and returns response headers (including `Set-Cookie`).
+  - No cookie attributes need to be weakened (no `SameSite=None` required).
+* **CORS**: The backend restricts cross-origin requests to configured production origins via `CLIENT_URL` and permitted preview regex patterns in `server/src/config/cors.js`. Requests made through Vercel's proxy either include the frontend `Origin` header (handled by the allowlist) or have no browser `Origin` header for direct proxy forwards.
+* **Real-Time WebSockets (Socket.IO)**: Vercel serverless does not proxy persistent WebSocket handshakes. The application handles this by loading notifications via REST `/api/notifications`, while optionally accepting `VITE_SOCKET_URL` for environments with dedicated WebSocket routing.
 
 ## 5. Single Page Application (SPA) Routing
-The frontend is a React SPA built with Vite. The static hosting provider must be configured with a fallback/rewrite rule to redirect all missing paths (`404` errors) to `index.html`. Without this rule, users refreshing pages like `/admin/designs` or navigating directly to URLs will see host-level 404 errors.
+The frontend is a React SPA built with Vite. `client/vercel.json` defines rewrites so that `/api/:path*` is proxied to Render first, and all remaining paths fallback to `/index.html`. This ensures page refreshes (e.g. `/admin/dashboard`, `/admin/enquiries`) resolve seamlessly.
 
 ## 6. Dependency Audit Remediation
 The `npm audit` on the frontend flags 7 vulnerabilities (e.g., `braces`, `postcss-selector-parser`). 
@@ -46,8 +70,15 @@ The `npm audit` on the frontend flags 7 vulnerabilities (e.g., `braces`, `postcs
 - [ ] 1. Provision a MongoDB Atlas cluster and acquire the connection string.
 - [ ] 2. Provision Cloudinary credentials for image storage.
 - [ ] 3. Generate a secure `JWT_SECRET`.
-- [ ] 4. Determine domain names for frontend and backend (ensure they share a root domain).
-- [ ] 5. Configure the backend host with the environment variables and start command.
-- [ ] 6. Configure the frontend host with `VITE_API_URL`, the build command, and SPA fallback rewrites.
-- [ ] 7. Deploy both services.
-- [ ] 8. Execute a manual browser test: log in to the admin panel to verify cookies are accepted.
+- [ ] 4. Configure the Render backend with environment variables (`MONGO_URI`, `JWT_SECRET`, `CLIENT_URL=https://tailoring-shop-sooty.vercel.app`, Cloudinary keys) and start command `npm start`.
+- [ ] 5. Configure the Vercel frontend:
+  - Ensure `client/vercel.json` contains the `/api/:path*` rewrite to Render and SPA fallback.
+  - Set `VITE_API_URL=/api` (or remove the variable so production defaults to `/api`).
+  - Build command: `npm run build`, output directory: `dist`.
+- [ ] 6. Deploy both services.
+- [ ] 7. Execute manual verification:
+  - Open `https://tailoring-shop-sooty.vercel.app/admin/login`.
+  - Log in with admin credentials.
+  - Verify `POST /api/auth/login` sets the `jwt` cookie.
+  - Verify protected dashboard requests (`/api/notifications`, `/api/admin/dashboard`) return `200 OK`.
+  - Refresh the browser on `/admin/dashboard` to verify session persistence.
