@@ -3,34 +3,36 @@ import apiClient from '../../api/client';
 import { Link } from 'react-router-dom';
 import GalleryCard from '../../components/shared/GalleryCard';
 
+const APPROVED_STATIC_DESIGNS = [
+  { staticId: "home-static-1", _id: "fallback", title: "The Mehrunissa Zardozi Raw Silk", description: "Intricate bullion stitch, floral zardozi motifs, deep round back cut with handcrafted latkans.", category: "Bridal", images: [{ url: "/assets/images/static-asset-2.jpg" }] },
+  { staticId: "home-static-2", _id: "fallback", title: "Noor Kalidar Chanderi Ensemble", description: "24-panel twirl silhouette, subtle gota borders, hand-tucked bodice, and cotton mulmul lining.", category: "Festive", images: [{ url: "/assets/images/static-asset-3.jpg" }] },
+  { staticId: "home-static-3", _id: "fallback", title: "Mulberry Silk & Organza Trim", description: "Straight silhouette with sheer organza hem insets, scallop hand-embroidery, and relaxed pant cut.", category: "Casual", images: [{ url: "/assets/images/static-asset-5.jpg" }] }
+];
+
 const Home = () => {
-  const [featuredDesigns, setFeaturedDesigns] = useState([]);
+  const [featuredDesigns, setFeaturedDesigns] = useState(APPROVED_STATIC_DESIGNS);
   const [loadingDesigns, setLoadingDesigns] = useState(true);
 
   useEffect(() => {
     const fetchFeaturedDesigns = async () => {
       try {
         const response = await apiClient.get('/designs');
-          const approvedStatic = [
-            { staticId: "home-static-1", _id: "fallback", title: "The Mehrunissa Zardozi Raw Silk", description: "Intricate bullion stitch, floral zardozi motifs, deep round back cut with handcrafted latkans.", category: "Bridal", images: [{ url: "/assets/images/static-asset-2.jpg" }] },
-            { staticId: "home-static-2", _id: "fallback", title: "Noor Kalidar Chanderi Ensemble", description: "24-panel twirl silhouette, subtle gota borders, hand-tucked bodice, and cotton mulmul lining.", category: "Festive", images: [{ url: "/assets/images/static-asset-3.jpg" }] },
-            { staticId: "home-static-3", _id: "fallback", title: "Mulberry Silk & Organza Trim", description: "Straight silhouette with sheer organza hem insets, scallop hand-embroidery, and relaxed pant cut.", category: "Casual", images: [{ url: "/assets/images/static-asset-5.jpg" }] }
-          ];
-          
-          if (response.data.success && response.data.data.length > 0) {
-            const realDesigns = response.data.data;
-            const mapped = approvedStatic.map((item, index) => {
-              return {
-                ...item,
-                _id: realDesigns[index % realDesigns.length]._id
-              };
-            });
-            setFeaturedDesigns(mapped);
-          } else {
-            setFeaturedDesigns(approvedStatic);
-          }
+        const realDesigns = response.data?.data?.designs || response.data?.data;
+
+        if (response.data?.success && Array.isArray(realDesigns) && realDesigns.length > 0) {
+          const mapped = APPROVED_STATIC_DESIGNS.map((item, index) => {
+            return {
+              ...item,
+              _id: realDesigns[index % realDesigns.length]._id
+            };
+          });
+          setFeaturedDesigns(mapped);
+        } else {
+          setFeaturedDesigns(APPROVED_STATIC_DESIGNS);
+        }
       } catch (err) {
         console.error('Failed to load featured designs:', err);
+        setFeaturedDesigns(APPROVED_STATIC_DESIGNS);
       } finally {
         setLoadingDesigns(false);
       }

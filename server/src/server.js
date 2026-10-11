@@ -43,20 +43,10 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // CORS config
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
-  .split(',')
-  .map(url => url.trim().replace(/\/+$/, ''))
-  .filter(Boolean);
+const { corsOriginHandler } = require('./config/cors');
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const normalizedOrigin = origin.trim().replace(/\/+$/, '');
-    if (allowedOrigins.includes(normalizedOrigin)) {
-      return callback(null, normalizedOrigin);
-    }
-    return callback(null, false);
-  },
+  origin: corsOriginHandler,
   credentials: true,
 }));
 

@@ -21,9 +21,10 @@ const Designs = () => {
     const fetchDesigns = async () => {
       try {
         const response = await apiClient.get('/designs');
-        if (response.data.success) {
+        if (response.data?.success) {
           const d = response.data.data;
-          setDesigns(d.designs || d);
+          const designList = Array.isArray(d?.designs) ? d.designs : (Array.isArray(d) ? d : []);
+          setDesigns(designList);
         }
       } catch (err) {
         setError('Failed to load designs. Please try again later.');
